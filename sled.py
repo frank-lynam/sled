@@ -59,15 +59,33 @@ if do_sfse or "sfse" in sys.argv:
     print("Looks like there's an sfse build in the enabled folder.")
     print("Want me to add that sfse to your Starfield installation folder?")
     print("Then you'll have to add it to steam as an outside application, run it once and run this script again.")
-    input("[y]: ", yn)
+    yn = input("[y]: ")
     if len(yn) > 0 and not yn.lower().startswith("y"):
       print("Alrighty, doing nothing =]")
       exit()
     print("Alrighty, installing sfse to Starfield folder")
-    sf
-    # extract SFSE stuff to the starfield binary folder
-    # Then tell them how to add sfse as an app in steam
-    # And run it once
+
+    if os.path.exists("staging"):
+      os.system("rm -rf staging")
+    os.mkdir("staging")
+    for plugin in os.listdir("enabled"):
+      if plugin.lower().endswith("7z") and plugin.lower().startswith("sfse"):
+        print("Using " + plugin)
+        os.system(f"7z e 'enabled/{plugin}' -ostaging > /dev/null")
+        os.system(f"cp staging/*.exe '{sf}'")
+        os.system(f"cp staging/*.dll '{sf}'")
+
+    os.system("chmod a+wr -R staging")
+    os.system("rm -rf staging")
+
+    print ("SFSE should be in the Starfield folder now")
+    print ("Now you need to add it as an external game in Steam and launch it at least once")
+    print ("Load Steam, go to Games -> Add a Non-Steam Game to My Library...")
+    print (f"Then navigate to {sf}")
+    print ("And add \"sfse_loader.exe\" as a game and load it once")
+    print ("It should load a little terminal window then eventually load Starfield")
+    print ("If you stream to another machine, do this through VNC first, then Connect to Starfield after it loads")
+    print ("Once you exit Starfield, run this again to install the plugins! =]\n")
   exit()
 
 print(f"Assuming {compats[-1]} is the sfse compatdata folder")
@@ -173,5 +191,16 @@ os.rmdir("staging/a")
 os.rmdir("staging")
 
 print ("\n" + "\n - ".join(modlist))
+
+
+with open(mygames + "/StarfieldPrefs.ini") as fl:
+  prefs = fl.read()
+if "bInvalidateOlderFiles" in prefs:
+  print ("\nbInvalidateOlderFiles confirmed")
+else:
+  prefs.replace("[Archive]", "[Archive]\nbInvalidateOlderFiles=1")
+  with open(mygames + "StarfieldPrefs.ini", "W") as fl:
+    fl.write(prefs)
+  print ("\nbInvalidateOlderFiles added!")
 
 print ("\nReady to play! Go launch sfse from Steam =]\n")
