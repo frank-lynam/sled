@@ -40,6 +40,9 @@ if len(compats) == 0:
   print ("Dang, couldn't find Starfield. Have you installed and run it at least once in Steam?")
   exit()
 
+if not os.path.isdir("enabled"):
+  os.mkdir("enabled")
+
 print (f"Found {len(compats)} compatdata folders: {compats}")
 print (f"Assuming {compats[0]} is the actual Starfield install")
 print()
@@ -49,10 +52,43 @@ if len(compats) == 1:
   print ("Didn't see anything that looks like sfse has been run yet.")
   do_sfse = True
 
+def find_data(stack, esm=False):
+  if len(stack) == 0:
+    return None
+  maybe = [stack[0] + "/" + x 
+    for x in os.listdir(stack[0])
+    if os.path.isdir(stack[0] + "/" + x)]
+  for x in maybe:
+    maybes = os.listdir(x)
+    if esm:
+      for y in maybes:
+        if any([y.lower().endswith(z) for z in esm]):
+          if not os.path.isdir(x + "/" + y):
+            return x + "/" + y
+    else:
+      if "Data" in maybes: 
+        return x + "/Data/"
+      if "data" in maybes:
+        return x + "/data/"
+      if any([y.lower() in [z.lower() for z in maybes] for y in ["meshes", "textures", "geometries", "sound"]]):
+        return x + "/"
+  return find_data(stack[1:] + maybe, esm)
+
+def extract(source, dest="staging/a/a"):
+  if source.lower().endswith("7z"):
+    os.system(f"7z x '{source}' -o{dest} > /dev/null")
+  elif plugin.lower().endswith("rar"):
+    os.system(f"unrar x '{source}' {dest} > /dev/null")
+  elif plugin.lower().endswith("zip"):
+    os.system(f"unzip '{source}' -d{dest} > /dev/null")
+  else:
+    return False
+  return True
+
 if do_sfse or "sfse" in sys.argv:
   if do_sfse and "sfse_loader.exe" in os.listdir(sf):
     print ("Looks like it's been added to your Starfield install, make sure you run it once!")
-  if not any([x.startswith("SFSE") and x.endswith(".7z") for x in os.listdir("enabled")]):
+  if not any([x.lower().startswith("sfse") and x.endswith(".7z") for x in os.listdir("enabled")]):
     print("I don't see an sfse build in the enabled folder.\nIf want to add it or a new one to your Starfield install, download one and put it there and run this again to install it for you!")
     exit()
   else:
@@ -67,13 +103,21 @@ if do_sfse or "sfse" in sys.argv:
 
     if os.path.exists("staging"):
       os.system("rm -rf staging")
-    os.mkdir("staging")
-    for plugin in os.listdir("enabled"):
-      if plugin.lower().endswith("7z") and plugin.lower().startswith("sfse"):
-        print("Using " + plugin)
-        os.system(f"7z e 'enabled/{plugin}' -ostaging > /dev/null")
-        os.system(f"cp staging/*.exe '{sf}'")
-        os.system(f"cp staging/*.dll '{sf}'")
+    os.system("mkdir -p staging/a/b")
+    for sfse in [["sfse", sf], ["sfpte", sf + "/Data/SFSE/Plugins"]]:
+      print ("Looking for " + sfse[0])
+      for plugin in os.listdir("enabled"):
+        if plugin.lower().startswith(sfse[0]):
+          print("Using " + plugin)
+          os.system("rm -rf staging/a/b/*")
+          extract("enabled/" + plugin, dest="staging/a/b")
+          os.system(f"mkdir -p {sfse[1]}")
+          for ft in ["exe", "dll"]:
+            item = find_data(["staging/a"], ft)
+            if item:
+              print(f"Found {item[11:]}")
+              os.system(f"cp '{item}' '{sfse[1]}'")
+          break
 
     os.system("chmod a+wr -R staging")
     os.system("rm -rf staging")
@@ -108,29 +152,15 @@ if os.path.exists("staging"):
   os.system("rm -rf staging")
 os.mkdir("staging")
 os.mkdir("staging/a")
+os.mkdir("staging/a/b")
 os.mkdir("staging/Data")
 
-def find_data(stack, esm=False):
-  if len(stack) == 0:
-    return None
-  maybe = [stack[0] + "/" + x 
-    for x in os.listdir(stack[0])
-    if os.path.isdir(stack[0] + "/" + x)]
-  for x in maybe:
-    maybes = os.listdir(x)
-    if esm:
-      for y in maybes:
-        if any([y.lower().endswith(z) for z in ["esm", "esp", "esl"]]):
-          if not os.path.isdir(x + "/" + y):
-            return x + "/" + y
-    else:
-      if "Data" in maybes: 
-        return x + "/Data/"
-      if "data" in maybes:
-        return x + "/data/"
-      if any([y.lower() in [z.lower() for z in maybes] for y in ["meshes", "textures", "geometries", "sound"]]):
-        return x + "/"
-  return find_data(stack[1:] + maybe, esm)
+def recurse_lower(source, dest):
+  os.system(f"find {source}* > .sledding")
+  with open(".sledding") as fl:
+    sources = [x.strip() for x in fl.readlines()]
+  os.remove(".sledding")
+  [os.system(f"mkdir -p {dest}{'/'.join(x[len(source):].lower().split('/')[:-1])} && cp {x} {dest}{x[len(source):].lower()}") for x in sources if os.path.isfile(x)]
 
 modlist = ["Mods staged:"]
 for plugin in os.listdir("enabled"):
@@ -138,23 +168,17 @@ for plugin in os.listdir("enabled"):
   os.system("chmod a+wr -R staging/a/b")
   os.system("rm -rf staging/a/b")
   os.mkdir("staging/a/b")
-  if plugin.lower().endswith("7z"):
-    if plugin.lower().startswith("sfse"):
-      print("Skipping sfse")
-      continue
-    os.system(f"7z x 'enabled/{plugin}' -ostaging/a/b > /dev/null")
-  elif plugin.lower().endswith("rar"):
-    os.system(f"unrar x 'enabled/{plugin}' staging/a/b > /dev/null")
-  elif plugin.lower().endswith("zip"):
-    os.system(f"unzip 'enabled/{plugin}' -dstaging/a/b > /dev/null")
-  else:
+  if any([plugin.lower().startswith(x) for x in ["sfse", "sfpte"]]):
+    print("Skipping sfse stuff")
+    continue
+  if not extract("enabled/" + plugin):
     print("Skipping, seems like prolly not a mod")
     continue
 
   paths = ["staging/a/b/" + x for x in os.listdir("staging/a/b")]
 
   data_path = find_data(["staging/a"])
-  esm_path = find_data(["staging/a"], True)
+  esm_path = find_data(["staging/a"], ["esm", "esp", "esl"])
   if data_path == None and esm_path == None:
     print ("Warning! No data or esm found!")
   else:
@@ -164,7 +188,7 @@ for plugin in os.listdir("enabled"):
       if esm_path != None and data_path in esm_path:
         print (f"Skipping {esm_path[11:]}, already in data path")
         esm_path = None
-      os.system(f"cp -r {data_path}* staging/Data")
+      recurse_lower(data_path, "staging/Data/")
     if esm_path != None:
       print (f"Using {esm_path[11:]}")
       os.system(f"cp {esm_path} staging/Data")
