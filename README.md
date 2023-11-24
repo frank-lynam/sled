@@ -15,7 +15,7 @@ If you want up update SFSE or SFPTE, put the new ones it in there and run `pytho
 
 ### Load order
 
-It loads them in alphabetical order linux-style (by ascii code). Change it up by changing the file names. Then re-deploy by running the script.
+It loads them in alphabetical order linux-style (by ascii code). Change it up by changing the file names, like by adding a z. Then re-deploy by running the script.
 
 ### But... why?
 
