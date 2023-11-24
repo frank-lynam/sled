@@ -39,7 +39,7 @@ cd sled
 
 Now you've got this code!
 
-Download and copy plugins, SFSE and SFPTE into your ~/workspace/sled/enabled/` folder and then go back to your terminal and run:
+Download and copy plugins, SFSE and SFPTE into your `~/workspace/sled/enabled/` folder and then go back to your terminal and run:
 
 ```bash
 cd ~/workspace/sled
